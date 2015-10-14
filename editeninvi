@@ -1,0 +1,262 @@
+#!/usr/bin/env ruby -wKU
+# -*- coding: utf-8 -*-
+
+preraw = '<center style="display:none">'
+postraw = '</center>'
+timeout = 60 * 1000
+
+STYLES = {
+    :unstyled => {},
+    :github => {
+        :h1 => 'margin: 20px 0 10px; padding: 0; font-weight: bold; -webkit-font-smoothing: subpixel-antialiased; cursor: text; font-size: 28px; color: #000',
+        :h2 => 'margin: 20px 0 10px; padding: 0; font-weight: bold; -webkit-font-smoothing: subpixel-antialiased; cursor: text; font-size: 24px; border-bottom: 1px solid #ccc; color: #000',
+        :h3 => 'margin: 20px 0 10px; padding: 0; font-weight: bold; -webkit-font-smoothing: subpixel-antialiased; cursor: text; font-size: 18px; color: #333',
+        :h4 => 'margin: 20px 0 10px; padding: 0; font-weight: bold; -webkit-font-smoothing: subpixel-antialiased; cursor: text; font-size: 16px; color: #333',
+        :h5 => 'margin: 20px 0 10px; padding: 0; font-weight: bold; -webkit-font-smoothing: subpixel-antialiased; cursor: text; font-size: 14px; color: #333',
+        :h6 => 'margin: 20px 0 10px; padding: 0; font-weight: bold; -webkit-font-smoothing: subpixel-antialiased; cursor: text; color: #777; font-size: 14px',
+        :pd => 'margin: 15px 0',
+        :a  => ' ',
+        :ul => 'padding-left: 30px',
+        :hr => 'background: transparent url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAYAAAAECAYAAACtBE5DAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAyJpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuMC1jMDYwIDYxLjEzNDc3NywgMjAxMC8wMi8xMi0xNzozMjowMCAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RSZWY9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZVJlZiMiIHhtcDpDcmVhdG9yVG9vbD0iQWRvYmUgUGhvdG9zaG9wIENTNSBNYWNpbnRvc2giIHhtcE1NOkluc3RhbmNlSUQ9InhtcC5paWQ6OENDRjNBN0E2NTZBMTFFMEI3QjRBODM4NzJDMjlGNDgiIHhtcE1NOkRvY3VtZW50SUQ9InhtcC5kaWQ6OENDRjNBN0I2NTZBMTFFMEI3QjRBODM4NzJDMjlGNDgiPiA8eG1wTU06RGVyaXZlZEZyb20gc3RSZWY6aW5zdGFuY2VJRD0ieG1wLmlpZDo4Q0NGM0E3ODY1NkExMUUwQjdCNEE4Mzg3MkMyOUY0OCIgc3RSZWY6ZG9jdW1lbnRJRD0ieG1wLmRpZDo4Q0NGM0E3OTY1NkExMUUwQjdCNEE4Mzg3MkMyOUY0OCIvPiA8L3JkZjpEZXNjcmlwdGlvbj4gPC9yZGY6UkRGPiA8L3g6eG1wbWV0YT4gPD94cGFja2V0IGVuZD0iciI/PqqezsUAAAAfSURBVHjaYmRABcYwBiM2QSA4y4hNEKYDQxAEAAIMAHNGAzhkPOlYAAAAAElFTkSuQmCC) repeat-x 0 0; border: 0 none; color: #ccc; height: 4px; padding: 0',
+        :blockquote => 'border-left: 4px solid #DDD; padding: 0 15px; color: #777',
+        :code => 'margin: 0 2px; padding: 0 5px; border: 1px solid #eaeaea; background-color: #f8f8f8; border-radius: 3px; font-family: Consolas, Courier, monospace; font-size: 12px; color: #333',
+        :table => 'border-collapse: collapse; border-spacing: 0; font-size: 100%; font: inherit',
+        :caption => ' ',
+        :colgroup => ' ',
+        :col => ' ',
+        :tbody => ' ',
+        :tfoot => ' ',
+        :thead => ' ',
+        :th => 'font-weight: bold; border: 1px solid #ccc; padding: 6px 13px',
+        :td => 'border: 1px solid #ccc; padding: 6px 13px',
+        :tr => 'border-top: 1px solid #ccc; background-color: #fff'
+    },
+    :custom => {
+        :h1 => 'color:#000; font-size:2.2857em; line-height:.6563em; margin:.6563em 0',
+        :h2 => 'color:#111; font-size:1.7143em; line-height:.875em; margin:.875em 0',
+        :h3 => 'color:#111; font-size:1.5em; line-height:1em; margin:1em 0',
+        :h4 => 'color:#111; font-size:1.2857em; line-height:1.1667em; margin:1.1667em 0',
+        :h5 => 'color:#111; font-size:1.15em; line-height:1.3em; margin:1.3em 0',
+        :h6 => 'font-size:1em; line-height:1.5em; margin:1.5em 0',
+        :pd => 'color:#111; font-family:"Helvetica Neue", Helvetica, Arial, Verdana, sans-serif; word-wrap:break-word; font-size:1.1429em; line-height:1.3125em; margin:1.3125em 0',
+        :a  => '-webkit-transition:color .2s ease-in-out; color:#0d6ea1; text-decoration:none',
+        :ul => 'margin-bottom:.4em',
+        :hr => ' ',
+        :blockquote => ' ',
+        :code => ' ',
+        :table => 'border:1px solid rgba(0,0,0,0.25); border-collapse:collapse; display:table; empty-cells:hide; margin:-1px 0 23px; padding:0; table-layout:fixed',
+        :caption => 'display:table-caption; font-weight:700',
+        :colgroup => 'display:table-column-group',
+        :col => 'display:table-column',
+        :tbody => 'display:table-row-group; background:rgba(0,0,0,0.05)',
+        :tfoot => 'display:table-footer-group; background:rgba(0,0,0,0.15); border:1px solid rgba(0,0,0,0.15); border-top:1px solid rgba(0,0,0,0.2)',
+        :thead => 'display:table-header-group; background:rgba(0,0,0,0.15); border:1px solid rgba(0,0,0,0.15); border-bottom:1px solid rgba(0,0,0,0.2)',
+        :th => 'display:table-cell; font-size:1.1em; line-height:23px; padding:0 1em',
+        :td => 'display:table-cell; font-size:1.1em; line-height:23px; padding:0 1em',
+        :tr => 'display:table-row'
+    },
+    :cfr => {
+        :h1 => 'margin: 20px 0 10px; padding: 0; font-weight: bold; -webkit-font-smoothing: subpixel-antialiased; cursor: text; font-size: 28px; color: #000',
+        :h2 => 'margin: 20px 0 10px; padding: 0; font-weight: bold; -webkit-font-smoothing: subpixel-antialiased; cursor: text; font-size: 24px; border-bottom: 1px solid #ccc; color: #000',
+        :h3 => 'margin: 20px 0 10px; padding: 0; font-weight: bold; -webkit-font-smoothing: subpixel-antialiased; cursor: text; font-size: 18px; color: #333',
+        :h4 => 'margin: 20px 0 10px; padding: 0; font-weight: bold; -webkit-font-smoothing: subpixel-antialiased; cursor: text; font-size: 16px; color: #333',
+        :h5 => 'margin: 20px 0 10px; padding: 0; font-weight: bold; -webkit-font-smoothing: subpixel-antialiased; cursor: text; font-size: 14px; color: #333',
+        :h6 => 'margin: 20px 0 10px; padding: 0; font-weight: bold; -webkit-font-smoothing: subpixel-antialiased; cursor: text; color: #777; font-size: 14px',
+        :pd => 'margin: 15px 0',
+        :a  => '-webkit-transition:color .2s ease-in-out; color:#0d6ea1; text-decoration:none',
+        :ul => 'padding-left: 30px',
+        :hr => 'background: transparent url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAYAAAAECAYAAACtBE5DAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAyJpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuMC1jMDYwIDYxLjEzNDc3NywgMjAxMC8wMi8xMi0xNzozMjowMCAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RSZWY9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZVJlZiMiIHhtcDpDcmVhdG9yVG9vbD0iQWRvYmUgUGhvdG9zaG9wIENTNSBNYWNpbnRvc2giIHhtcE1NOkluc3RhbmNlSUQ9InhtcC5paWQ6OENDRjNBN0E2NTZBMTFFMEI3QjRBODM4NzJDMjlGNDgiIHhtcE1NOkRvY3VtZW50SUQ9InhtcC5kaWQ6OENDRjNBN0I2NTZBMTFFMEI3QjRBODM4NzJDMjlGNDgiPiA8eG1wTU06RGVyaXZlZEZyb20gc3RSZWY6aW5zdGFuY2VJRD0ieG1wLmlpZDo4Q0NGM0E3ODY1NkExMUUwQjdCNEE4Mzg3MkMyOUY0OCIgc3RSZWY6ZG9jdW1lbnRJRD0ieG1wLmRpZDo4Q0NGM0E3OTY1NkExMUUwQjdCNEE4Mzg3MkMyOUY0OCIvPiA8L3JkZjpEZXNjcmlwdGlvbj4gPC9yZGY6UkRGPiA8L3g6eG1wbWV0YT4gPD94cGFja2V0IGVuZD0iciI/PqqezsUAAAAfSURBVHjaYmRABcYwBiM2QSA4y4hNEKYDQxAEAAIMAHNGAzhkPOlYAAAAAElFTkSuQmCC) repeat-x 0 0; border: 0 none; color: #ccc; height: 4px; padding: 0',
+        :blockquote => 'border-left: 4px solid #DDD; padding: 0 15px; color: #777',
+        :code => ' ',
+        :table => 'border:1px solid rgba(0,0,0,0.25); border-collapse:collapse; display:table; empty-cells:hide; margin:-1px 0 23px; padding:0; table-layout:fixed',
+        :caption => 'display:table-caption; font-weight:700',
+        :colgroup => 'display:table-column-group',
+        :col => 'display:table-column',
+        :tbody => 'display:table-row-group; background:rgba(0,0,0,0.05)',
+        :tfoot => 'display:table-footer-group; background:rgba(0,0,0,0.15); border:1px solid rgba(0,0,0,0.15); border-top:1px solid rgba(0,0,0,0.2)',
+        :thead => 'display:table-header-group; background:rgba(0,0,0,0.15); border:1px solid rgba(0,0,0,0.15); border-bottom:1px solid rgba(0,0,0,0.2)',
+        :th => 'display:table-cell; font-size:1.1em; line-height:23px; padding:0 1em',
+        :td => 'display:table-cell; font-size:1.1em; line-height:23px; padding:0 1em',
+        :tr => 'display:table-row'
+    }
+}
+
+$style=:cfr
+
+# enclode string in quotes
+def quote(str)
+    '"' << str.to_s << '"'
+end
+
+# proper escaping of backslash
+def escape(str)
+    str.to_s.gsub(/(?=["\\])/, '\\')
+end
+
+def showdialog(str)
+    %x{osascript <<EOS
+        display dialog "#{str}"
+EOS}
+end
+
+# convert a standard, not-markdown-yet-note to editable format
+# with special handling for existing checkboxes
+def simpleconvert(str)
+    str.gsub(/<div id="en-note">(.+)<\/div>/m, "\\1")\
+        .gsub(/<div><br \/><\/div>/m, "\n")\
+        .gsub(/<div>(.+?)<\/div>/m, "\\1\n")\
+        .gsub(/<object class="en-todo"><\/object>/m, "[]")
+end
+
+# convert evernote source format to vi source format
+def rawentovi(str)
+    str.gsub(/\n?<pre>\n?/, '').gsub(/<\/pre>/, '')\
+        .gsub('&lt;', '<')\
+        .gsub('&gt;', '>')\
+        .gsub('&quot;', '"')
+end
+
+# convert vi source format to evernote source format
+# (tells Evernote to leave the HTML code alone, really)
+def rawvitoen(str)
+    "<pre>"+str+"</pre>"
+end
+
+# some extra formatting to make multimarkdown's output more palatable to evernote
+def extramd(str)
+    tmpstr = str.gsub(/^(?:<p>){0,1}\[\](.*?)(?:<\/p>){0,1}$/, "<div><object class=\"en-todo\"></object>\\1</div>")
+    if $style != :unstyled then
+        tmpstr\
+            .gsub(/<h1/, "<h1 style='" + STYLES[$style][:h1] + "'")\
+            .gsub(/<h2/, "<h1 style='" + STYLES[$style][:h2] + "'")\
+            .gsub(/<h3/, "<h1 style='" + STYLES[$style][:h3] + "'")\
+            .gsub(/<h4/, "<h1 style='" + STYLES[$style][:h4] + "'")\
+            .gsub(/<h5/, "<h1 style='" + STYLES[$style][:h5] + "'")\
+            .gsub(/<h6/, "<h1 style='" + STYLES[$style][:h6] + "'")\
+            .gsub(/<p /,  "<p  style='" + STYLES[$style][:pd] + "' ")\
+            .gsub(/<p>/,  "<p  style='" + STYLES[$style][:pd] + "'>")\
+            .gsub(/<div/,"<p  style='" + STYLES[$style][:pd] + "'")\
+            .gsub(/<a/,  "<a  style='" + STYLES[$style][:a]  + "'")\
+            .gsub(/<ul/, "<ul style='" + STYLES[$style][:ul] + "'")\
+            .gsub(/<ol/, "<ol style='" + STYLES[$style][:ul] + "'")\
+            .gsub(/<hr/, "<hr style='" + STYLES[$style][:hr] + "'")\
+            .gsub(/<blockquote/, "<blockquote style='" + STYLES[$style][:blockquote] + "'")\
+            .gsub(/<code/, "<code style='" + STYLES[$style][:code] + "'")\
+            .gsub(/<table/, "<table style='" + STYLES[$style][:table] + "'")\
+            .gsub(/<caption/, "<caption style='" + STYLES[$style][:caption] + "'")\
+            .gsub(/<colgroup/, "<colgroup style='" + STYLES[$style][:colgroup] + "'")\
+            .gsub(/<col /, "<col style='" + STYLES[$style][:col] + "' ")\
+            .gsub(/<tbody/, "<tbody style='" + STYLES[$style][:tbody] + "'")\
+            .gsub(/<tfoot/, "<tfoot style='" + STYLES[$style][:tfoot] + "'")\
+            .gsub(/<thead/, "<thead style='" + STYLES[$style][:thead] + "'")\
+            .gsub(/<th /, "<th style='" + STYLES[$style][:th] + "' ")\
+            .gsub(/<td/, "<td style='" + STYLES[$style][:td] + "'")\
+            .gsub(/<tr/, "<tr style='" + STYLES[$style][:tr] + "'")
+    else
+        tmpstr
+    end
+end
+
+=begin
+%x{osascript <<EOS
+        display dialog "Loading note in vim..." with icon caution buttons {"Cancel"} giving up after 10
+EOS}
+=end
+
+MARKDOWN = '/usr/local/bin/multimarkdown'
+Process.exit unless File.executable?(MARKDOWN)
+
+curlink = %x{osascript <<EOS
+tell application #{quote 'Evernote'}
+    if selection is not {} then
+        set curselection to selection
+        return note link of item 1 of curselection
+    else
+        return ""
+    end if
+end tell
+EOS}.strip
+
+curcontent = %x{osascript <<EOS
+tell application #{quote 'Evernote'}
+    if selection is not {} then
+        set curselection to selection
+        return HTML content of item 1 of curselection
+    else
+        return ""
+    end if
+end tell
+EOS}.strip
+
+if curlink == '' or curcontent == '' then
+    showdialog "Sorry. Unable to read note's link or content."
+    exit 1
+end
+
+rawcontentmatches = curcontent.match(/<center style=.*?>(.*?)<\/center>/m)
+if rawcontentmatches != nil
+    rawcontent = rawentovi(rawcontentmatches[1])
+else
+    rawcontent = simpleconvert(curcontent)
+end
+puts "CUR:"
+puts curcontent
+puts "RAW:"
+puts rawcontent
+
+require 'tempfile'
+Tempfile.open('entovi') do |file|
+    file.puts rawcontent
+    file.rewind
+    ts = File.stat(file.path).mtime
+    %x{osascript <<EOS
+        tell application #{quote 'iTerm'}
+            activate
+            tell the current terminal
+                set mysession to (make new session at the end of sessions)
+                tell mysession
+                    exec command "vim #{file.path}"
+                end tell
+            end tell
+        end tell
+EOS}
+    # timeout after 60 seconds
+    endtime = Time.now + timeout
+    sleep 1 until `ps aux | grep #{file.path} | grep -v grep` != "" or Time.now > endtime
+    if Time.now > endtime then
+        showdialog "Sorry. Starting vi took too long."
+        exit 1
+    end
+    until `ps aux | grep #{file.path} | grep -v grep` == "" do
+        sleep 1
+        if File.stat(file.path).mtime != ts then
+            ts = File.stat(file.path).mtime
+            # File modified
+            newcontent = ''
+            newrawcontent = ''
+            File.open(file.path, "r") do |ufile|
+                ufile.each_line do |line|
+                    newrawcontent << line
+                end
+            end
+            IO.popen("#{quote MARKDOWN} --smart", 'r+') do |io|
+                newrawcontent.each_line{|line| io << line}
+                io.close_write
+                io.each_line{|line| newcontent << extramd(line)}
+            end
+            puts "Uploading (unquoted)"
+            puts newrawcontent
+            puts "Uploading (quoted)"
+            puts "#{quote escape(newcontent + "\n\n" + preraw + rawvitoen(newrawcontent) + postraw)}"
+            ret = %x{osascript <<EOS
+                tell application #{quote 'Evernote'}
+                    set note1 to find note "#{curlink}"
+                    if note1 is not missing value then
+                        set HTML content of note1 to #{quote escape(newcontent + "\n\n" + preraw + rawvitoen(newrawcontent) + postraw)}
+                    end if
+                end tell
+EOS}
+            #puts ret
+        end
+    end
+end
