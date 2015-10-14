@@ -4,7 +4,13 @@ v0.1.0
 
 This is a very silly little util that lets you edit Evernote notes directly from your heavy client in vim.
 
-Note that the prerequisites are:
+## Warning
+
+The first time you save an existing note with this tool, it will write what it believes is the note's true content in a hidden field. This means that, from now on, if you edit this note in Evernote then in this tool, you will lose edits made in Evernote itself.
+
+## Prerequisites
+
+The prerequisites are:
 
 - AppleScript (therefore, OS X)
 - Ruby
