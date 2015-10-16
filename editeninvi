@@ -1,6 +1,17 @@
 #!/usr/bin/env ruby -wKU
 # -*- coding: utf-8 -*-
 
+# By Chris F. Ravenscroft
+# v0.1.1
+
+require 'tempfile'
+require 'securerandom'
+
+RubyVM::InstructionSequence.compile_option = {
+    tailcall_optimization: true,
+    trace_instruction: false
+}
+
 PRERAW = '<center style="display:none">'
 POSTRAW = '</center>'
 TIMEOUT = 60 * 1000
@@ -82,6 +93,12 @@ STYLES = {
 }
 
 $style=:cfr
+
+def dump_string(str)
+    str.each_byte do |c|
+        puts "C: #{c.chr} | #{c}"
+    end
+end
 
 # enclode string in quotes
 def quote(str)
@@ -165,6 +182,7 @@ EOS}
 
 MARKDOWN = '/usr/local/bin/multimarkdown'
 Process.exit unless File.executable?(MARKDOWN)
+DIAGRAM = '/usr/local/bin/dot'
 
 def get_cur_note_data()
 curlink = %x{osascript <<-EOS
@@ -218,90 +236,177 @@ else
 end
 end
 
-def process_raw_content(str)
-    processed = ''
+def chunk_it_up(str)
+    cstr=''
+    chunks = []
+    bits = str.split(/('''[A-Za-z0-9\-_]+\n.+?\n'''\n)/m)
+    bits.each do |bit|
+        if bit.start_with?("'''") then
+            cstr << "<!--bit-->\n"
+            chunks << bit
+        else
+            cstr << bit
+        end
+    end
+    [cstr, chunks]
+end
+
+def markit(str)
+    marked = ''
     IO.popen("#{quote MARKDOWN} --smart", 'r+') do |io|
         str.each_line{|line| io << line}
         io.close_write
-        io.each_line{|line| processed << extramd(line)}
+        io.each_line{|line| marked << extramd(line)}
     end
-    processed
+    marked
 end
 
-def update_note_in_en(link, raw, str)
-    puts "Uploading (unquoted)"
-    puts raw
-    puts "Uploading (quoted)"
-    puts "#{quote escape(str + "\n\n" + PRERAW + rawvitoen(raw) + POSTRAW)}"
+def diagramit(str)
+    file_path = "#{SecureRandom.uuid}.png"
+    temp_path = "#{File.expand_path('~')}/Desktop/#{file_path}"
+    IO.popen("#{quote DIAGRAM} -Tpng -o #{temp_path}", 'r+') do |io|
+        str.each_line{|line| io << line}
+        io.close_write
+    end
+    if File.exist?(temp_path) then
+        file_path
+    else
+        nil
+    end
+end
+
+def process_bit(str)
+    matches = str.match(/'''([A-Za-z0-9\-_]+)\n(.+?)\n'''/m)
+    case matches[1]
+    when "diagram"
+        [:diagram, matches[2]]
+    else
+        [:text, str]
+    end
+end
+
+def post_process(str, chunks)
+    actions = []
+    str.each_line do |line|
+        if line == "<!--bit-->\n" then
+            actions << process_bit(chunks.shift)
+        else
+            actions << [:text, line]
+        end
+    end
+    actions
+end
+
+def process_raw_content(str)
+    cstr, chunks = chunk_it_up(str)
+    post_process(markit(cstr), chunks)
+end
+
+def append_to_note_in_en(link, bit_action, bit_content, actions, ev_actions)
+    case bit_action
+    when :text
+        content = ''
+        while bit_action == :text do
+            content << bit_content
+            bit_action, bit_content = actions.shift
+        end
+        #puts "Appending text: [#{content}]"
+        ev_actions << "tell note1 to append html #{(quote escape(content)).gsub("\n", '\n')}"
+    when :diagram
+        file_path = diagramit(bit_content)
+        if file_path == nil then
+            ev_actions << "tell note1 to append html \"<center style='color:red'>ERROR: malformed diagram definition</center>\""
+        else
+            ev_actions << "tell note1 to append attachment file (tempFolder & \"#{file_path}\")"
+        end
+        bit_action, bit_content = actions.shift
+    end
+
+    if bit_action != nil then
+        append_to_note_in_en(link, bit_action, bit_content, actions, ev_actions)
+    else
+        ev_actions
+    end
+end
+
+def update_note_in_en(link, raw, actions)
+    content = ''
+    bit_action, bit_content = actions.shift
+    while bit_action == :text do
+        content << bit_content
+        bit_action, bit_content = actions.shift
+    end
+
+    #puts "Writing first block: [#{content}]"
+
     %x{osascript <<-EOS
         tell application #{quote 'Evernote'}
             set note1 to find note "#{link}"
             if note1 is not missing value then
-                set HTML content of note1 to #{quote escape(str + "\n\n" + PRERAW + rawvitoen(raw) + POSTRAW)}
+                set HTML content of note1 to #{quote escape(content + "\n\n" + PRERAW + rawvitoen(raw) + POSTRAW)}
             end if
         end tell
 EOS}
+
+    if bit_action != nil then
+        ev_actions = append_to_note_in_en(link, bit_action, bit_content, actions, []).join("\n")
+        #puts "EV_ACTION: [#{ev_actions}]"
+
+        sleep 1 # TODO no need...
+        # Yes, we need to call the 'append' script separately from the 'set content' one.
+        # Looks like a synchronization issue.
+        # Note that we can append multiple times in a given script.
+        %x{osascript <<-EOS
+            tell application #{quote 'Evernote'}
+                set note1 to find note "#{link}"
+                if note1 is not missing value then
+                    set tempFolder to (path to desktop folder from user domain) as text
+                    #{ev_actions}
+                end if
+            end tell
+EOS}
+    end
 end
 
 def open_in_vim(link, str)
-require 'tempfile'
-Tempfile.open('entovi') do |file|
-    file.puts str
-    file.rewind
-    ts = File.stat(file.path).mtime
-    %x{osascript <<-EOS
-        tell application #{quote 'iTerm'}
-            activate
-            tell the current terminal
-                set mysession to (make new session at the end of sessions)
-                tell mysession
-                    exec command "vim #{file.path}"
+    Tempfile.open('entovi') do |file|
+        file.puts str
+        file.rewind
+        ts = File.stat(file.path).mtime
+        %x{osascript <<-EOS
+            tell application #{quote 'iTerm'}
+                activate
+                tell the current terminal
+                    set mysession to (make new session at the end of sessions)
+                    tell mysession
+                        exec command "vim #{file.path}"
+                    end tell
                 end tell
             end tell
-        end tell
-EOS}
-    # timeout after 60 seconds
-    endtime = Time.now + TIMEOUT
-    sleep 1 until `ps aux | grep #{file.path} | grep -v grep` != "" or Time.now > endtime
-    if Time.now > endtime then
-        showdialog "Sorry. Starting vi took too long."
-        exit 1
-    end
-    until `ps aux | grep #{file.path} | grep -v grep` == "" do
-        sleep 1
-        if File.stat(file.path).mtime != ts then
-            ts = File.stat(file.path).mtime
-            # File modified
-            newrawcontent = ''
-            File.open(file.path, "r") do |ufile|
-                ufile.each_line do |line|
-                    newrawcontent << line
+    EOS}
+        # timeout after 60 seconds
+        endtime = Time.now + TIMEOUT
+        sleep 1 until `ps aux | grep #{file.path} | grep -v grep` != "" or Time.now > endtime
+        if Time.now > endtime then
+            showdialog "Sorry. Starting vi took too long."
+            exit 1
+        end
+        until `ps aux | grep #{file.path} | grep -v grep` == "" do
+            sleep 1
+            if File.stat(file.path).mtime != ts then
+                ts = File.stat(file.path).mtime
+                # File modified
+                newrawcontent = ''
+                File.open(file.path, "r") do |ufile|
+                    ufile.each_line do |line|
+                        newrawcontent << line
+                    end
                 end
+                update_note_in_en(link, newrawcontent,
+                    process_raw_content(newrawcontent))
             end
-
-            newcontent = process_raw_content(newrawcontent)
-            update_note_in_en(link, newrawcontent, newcontent)
         end
     end
-end
-end
-
-def dead_code()
-=begin
-            # Yes, we need to call the 'append' script separately from the 'set content' one.
-            # Looks like a synchronization issue.
-            # Note that we can append multiple times in a given script.
-            ret = %x{osascript <<-EOS
-                tell application #{quote 'Evernote'}
-                    set note1 to find note "#{link}"
-                    if note1 is not missing value then
-                        set textPathDesktopFolder to (path to desktop folder from user domain) as text
-                        tell note1 to append attachment (textPathDesktopFolder & "Thatsme.jpg")
-                    end if
-                end tell
-EOS}
-=end
-                #puts ret
 end
 
 #
@@ -314,6 +419,8 @@ if note_data == nil then
     exit 1
 end
 curlink, curcontent = note_data
+
+#puts "EXISTING CONTENT: [#{curcontent}]"
 
 rawcontent = get_raw_content(curcontent)
 

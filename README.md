@@ -1,7 +1,5 @@
 # EditENinVI
 
-v0.1.0
-
 This is a very silly little util that lets you edit Evernote notes directly from your heavy client in vim.
 
 ## Warning
