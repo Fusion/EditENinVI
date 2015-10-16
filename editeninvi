@@ -1,9 +1,9 @@
 #!/usr/bin/env ruby -wKU
 # -*- coding: utf-8 -*-
 
-preraw = '<center style="display:none">'
-postraw = '</center>'
-timeout = 60 * 1000
+PRERAW = '<center style="display:none">'
+POSTRAW = '</center>'
+TIMEOUT = 60 * 1000
 
 STYLES = {
     :unstyled => {},
@@ -94,132 +94,162 @@ def escape(str)
 end
 
 def showdialog(str)
-    %x{osascript <<EOS
-        display dialog "#{str}"
+%x{osascript <<-EOS
+    display dialog "#{str}"
 EOS}
 end
 
 # convert a standard, not-markdown-yet-note to editable format
 # with special handling for existing checkboxes
 def simpleconvert(str)
-    str.gsub(/<div id="en-note">(.+)<\/div>/m, "\\1")\
-        .gsub(/<div><br \/><\/div>/m, "\n")\
-        .gsub(/<div>(.+?)<\/div>/m, "\\1\n")\
-        .gsub(/<object class="en-todo"><\/object>/m, "[]")
+str.gsub(/<div id="en-note">(.+)<\/div>/m, "\\1")\
+    .gsub(/<div><br \/><\/div>/m, "\n")\
+    .gsub(/<div>(.+?)<\/div>/m, "\\1\n")\
+    .gsub(/<object class="en-todo"><\/object>/m, "[]")
 end
 
 # convert evernote source format to vi source format
 def rawentovi(str)
-    str.gsub(/\n?<pre>\n?/, '').gsub(/<\/pre>/, '')\
-        .gsub('&lt;', '<')\
-        .gsub('&gt;', '>')\
-        .gsub('&quot;', '"')
+str.gsub(/\n?<pre>\n?/, '').gsub(/<\/pre>/, '')\
+    .gsub('&lt;', '<')\
+    .gsub('&gt;', '>')\
+    .gsub('&quot;', '"')
 end
 
 # convert vi source format to evernote source format
 # (tells Evernote to leave the HTML code alone, really)
 def rawvitoen(str)
-    "<pre>"+str+"</pre>"
+"<pre>"+str+"</pre>"
 end
 
 # some extra formatting to make multimarkdown's output more palatable to evernote
 def extramd(str)
-    tmpstr = str.gsub(/^(?:<p>){0,1}\[\](.*?)(?:<\/p>){0,1}$/, "<div><object class=\"en-todo\"></object>\\1</div>")
-    if $style != :unstyled then
-        tmpstr\
-            .gsub(/<h1/, "<h1 style='" + STYLES[$style][:h1] + "'")\
-            .gsub(/<h2/, "<h1 style='" + STYLES[$style][:h2] + "'")\
-            .gsub(/<h3/, "<h1 style='" + STYLES[$style][:h3] + "'")\
-            .gsub(/<h4/, "<h1 style='" + STYLES[$style][:h4] + "'")\
-            .gsub(/<h5/, "<h1 style='" + STYLES[$style][:h5] + "'")\
-            .gsub(/<h6/, "<h1 style='" + STYLES[$style][:h6] + "'")\
-            .gsub(/<p /,  "<p  style='" + STYLES[$style][:pd] + "' ")\
-            .gsub(/<p>/,  "<p  style='" + STYLES[$style][:pd] + "'>")\
-            .gsub(/<div/,"<p  style='" + STYLES[$style][:pd] + "'")\
-            .gsub(/<a/,  "<a  style='" + STYLES[$style][:a]  + "'")\
-            .gsub(/<ul/, "<ul style='" + STYLES[$style][:ul] + "'")\
-            .gsub(/<ol/, "<ol style='" + STYLES[$style][:ul] + "'")\
-            .gsub(/<hr/, "<hr style='" + STYLES[$style][:hr] + "'")\
-            .gsub(/<blockquote/, "<blockquote style='" + STYLES[$style][:blockquote] + "'")\
-            .gsub(/<code/, "<code style='" + STYLES[$style][:code] + "'")\
-            .gsub(/<table/, "<table style='" + STYLES[$style][:table] + "'")\
-            .gsub(/<caption/, "<caption style='" + STYLES[$style][:caption] + "'")\
-            .gsub(/<colgroup/, "<colgroup style='" + STYLES[$style][:colgroup] + "'")\
-            .gsub(/<col /, "<col style='" + STYLES[$style][:col] + "' ")\
-            .gsub(/<tbody/, "<tbody style='" + STYLES[$style][:tbody] + "'")\
-            .gsub(/<tfoot/, "<tfoot style='" + STYLES[$style][:tfoot] + "'")\
-            .gsub(/<thead/, "<thead style='" + STYLES[$style][:thead] + "'")\
-            .gsub(/<th /, "<th style='" + STYLES[$style][:th] + "' ")\
-            .gsub(/<td/, "<td style='" + STYLES[$style][:td] + "'")\
-            .gsub(/<tr/, "<tr style='" + STYLES[$style][:tr] + "'")
-    else
-        tmpstr
-    end
+tmpstr = str.gsub(/^(?:<p>){0,1}\[\](.*?)(?:<\/p>){0,1}$/, "<div><object class=\"en-todo\"></object>\\1</div>")
+if $style != :unstyled then
+    tmpstr\
+        .gsub(/<h1/, "<h1 style='" + STYLES[$style][:h1] + "'")\
+        .gsub(/<h2/, "<h1 style='" + STYLES[$style][:h2] + "'")\
+        .gsub(/<h3/, "<h1 style='" + STYLES[$style][:h3] + "'")\
+        .gsub(/<h4/, "<h1 style='" + STYLES[$style][:h4] + "'")\
+        .gsub(/<h5/, "<h1 style='" + STYLES[$style][:h5] + "'")\
+        .gsub(/<h6/, "<h1 style='" + STYLES[$style][:h6] + "'")\
+        .gsub(/<p /,  "<p  style='" + STYLES[$style][:pd] + "' ")\
+        .gsub(/<p>/,  "<p  style='" + STYLES[$style][:pd] + "'>")\
+        .gsub(/<div/,"<p  style='" + STYLES[$style][:pd] + "'")\
+        .gsub(/<a/,  "<a  style='" + STYLES[$style][:a]  + "'")\
+        .gsub(/<ul/, "<ul style='" + STYLES[$style][:ul] + "'")\
+        .gsub(/<ol/, "<ol style='" + STYLES[$style][:ul] + "'")\
+        .gsub(/<hr/, "<hr style='" + STYLES[$style][:hr] + "'")\
+        .gsub(/<blockquote/, "<blockquote style='" + STYLES[$style][:blockquote] + "'")\
+        .gsub(/<code/, "<code style='" + STYLES[$style][:code] + "'")\
+        .gsub(/<table/, "<table style='" + STYLES[$style][:table] + "'")\
+        .gsub(/<caption/, "<caption style='" + STYLES[$style][:caption] + "'")\
+        .gsub(/<colgroup/, "<colgroup style='" + STYLES[$style][:colgroup] + "'")\
+        .gsub(/<col /, "<col style='" + STYLES[$style][:col] + "' ")\
+        .gsub(/<tbody/, "<tbody style='" + STYLES[$style][:tbody] + "'")\
+        .gsub(/<tfoot/, "<tfoot style='" + STYLES[$style][:tfoot] + "'")\
+        .gsub(/<thead/, "<thead style='" + STYLES[$style][:thead] + "'")\
+        .gsub(/<th /, "<th style='" + STYLES[$style][:th] + "' ")\
+        .gsub(/<td/, "<td style='" + STYLES[$style][:td] + "'")\
+        .gsub(/<tr/, "<tr style='" + STYLES[$style][:tr] + "'")
+else
+    tmpstr
+end
 end
 
 =begin
 %x{osascript <<EOS
-        display dialog "Loading note in vim..." with icon caution buttons {"Cancel"} giving up after 10
+    display dialog "Loading note in vim..." with icon caution buttons {"Cancel"} giving up after 10
 EOS}
 =end
 
 MARKDOWN = '/usr/local/bin/multimarkdown'
 Process.exit unless File.executable?(MARKDOWN)
 
-curlink = %x{osascript <<EOS
-tell application #{quote 'Evernote'}
-    if selection is not {} then
-        set curselection to selection
-        return note link of item 1 of curselection
-    else
-        return ""
-    end if
-end tell
+def get_cur_note_data()
+curlink = %x{osascript <<-EOS
+    tell application #{quote 'Evernote'}
+        if selection is not {} then
+            set curselection to selection
+            return note link of item 1 of curselection
+        else
+            return ""
+        end if
+    end tell
 EOS}.strip
 
-curcontent = %x{osascript <<EOS
-tell application #{quote 'Evernote'}
-    if selection is not {} then
-        set curselection to selection
-        return HTML content of item 1 of curselection
-    else
-        return ""
-    end if
-end tell
+curcontent = %x{osascript <<-EOS
+    tell application #{quote 'Evernote'}
+        if selection is not {} then
+            set curselection to selection
+            return HTML content of item 1 of curselection
+        else
+            return ""
+        end if
+    end tell
 EOS}.strip
 
 if curlink == '' or curcontent == '' then
-    showdialog "Sorry. Unable to read note's link or content."
-    exit 1
-end
-
-rawcontentmatches = curcontent.match(/<center style=.*?>(.*?)<\/center>/m)
-if rawcontentmatches != nil
-    rawcontent = rawentovi(rawcontentmatches[1])
+    nil
 else
-    rawcontent = simpleconvert(curcontent)
+    [curlink, curcontent]
+end
 end
 
-properties = %x{osascript <<EOS
-tell application #{quote 'Evernote'}
-    if selection is not {} then
-        set curselection to selection
-        return properties of item 1 of curselection
-    else
-        return ""
-    end if
-end tell
+def get_cur_note_properties()
+%x{osascript <<-EOS
+    tell application #{quote 'Evernote'}
+        if selection is not {} then
+            set curselection to selection
+            return properties of item 1 of curselection
+        else
+            return ""
+        end if
+    end tell
 EOS}.strip
+end
 
+def get_raw_content(str)
+rawcontentmatches = str.match(/<center style=.*?>(.*?)<\/center>/m)
+if rawcontentmatches != nil
+    rawentovi(rawcontentmatches[1])
+else
+    simpleconvert(str)
+end
+end
 
-puts properties
+def process_raw_content(str)
+    processed = ''
+    IO.popen("#{quote MARKDOWN} --smart", 'r+') do |io|
+        str.each_line{|line| io << line}
+        io.close_write
+        io.each_line{|line| processed << extramd(line)}
+    end
+    processed
+end
 
+def update_note_in_en(link, raw, str)
+    puts "Uploading (unquoted)"
+    puts raw
+    puts "Uploading (quoted)"
+    puts "#{quote escape(str + "\n\n" + PRERAW + rawvitoen(raw) + POSTRAW)}"
+    %x{osascript <<-EOS
+        tell application #{quote 'Evernote'}
+            set note1 to find note "#{link}"
+            if note1 is not missing value then
+                set HTML content of note1 to #{quote escape(str + "\n\n" + PRERAW + rawvitoen(raw) + POSTRAW)}
+            end if
+        end tell
+EOS}
+end
+
+def open_in_vim(link, str)
 require 'tempfile'
 Tempfile.open('entovi') do |file|
-    file.puts rawcontent
+    file.puts str
     file.rewind
     ts = File.stat(file.path).mtime
-    %x{osascript <<EOS
+    %x{osascript <<-EOS
         tell application #{quote 'iTerm'}
             activate
             tell the current terminal
@@ -231,7 +261,7 @@ Tempfile.open('entovi') do |file|
         end tell
 EOS}
     # timeout after 60 seconds
-    endtime = Time.now + timeout
+    endtime = Time.now + TIMEOUT
     sleep 1 until `ps aux | grep #{file.path} | grep -v grep` != "" or Time.now > endtime
     if Time.now > endtime then
         showdialog "Sorry. Starting vi took too long."
@@ -242,43 +272,51 @@ EOS}
         if File.stat(file.path).mtime != ts then
             ts = File.stat(file.path).mtime
             # File modified
-            newcontent = ''
             newrawcontent = ''
             File.open(file.path, "r") do |ufile|
                 ufile.each_line do |line|
                     newrawcontent << line
                 end
             end
-            IO.popen("#{quote MARKDOWN} --smart", 'r+') do |io|
-                newrawcontent.each_line{|line| io << line}
-                io.close_write
-                io.each_line{|line| newcontent << extramd(line)}
-            end
-            puts "Uploading (unquoted)"
-            puts newrawcontent
-            puts "Uploading (quoted)"
-            puts "#{quote escape(newcontent + "\n\n" + preraw + rawvitoen(newrawcontent) + postraw)}"
-            ret = %x{osascript <<EOS
-                tell application #{quote 'Evernote'}
-                    set note1 to find note "#{curlink}"
-                    if note1 is not missing value then
-                        set HTML content of note1 to #{quote escape(newcontent + "\n\n" + preraw + rawvitoen(newrawcontent) + postraw)}
-                    end if
-                end tell
-EOS}
+
+            newcontent = process_raw_content(newrawcontent)
+            update_note_in_en(link, newrawcontent, newcontent)
+        end
+    end
+end
+end
+
+def dead_code()
+=begin
             # Yes, we need to call the 'append' script separately from the 'set content' one.
             # Looks like a synchronization issue.
             # Note that we can append multiple times in a given script.
-            ret = %x{osascript <<EOS
+            ret = %x{osascript <<-EOS
                 tell application #{quote 'Evernote'}
-                    set note1 to find note "#{curlink}"
+                    set note1 to find note "#{link}"
                     if note1 is not missing value then
                         set textPathDesktopFolder to (path to desktop folder from user domain) as text
                         tell note1 to append attachment (textPathDesktopFolder & "Thatsme.jpg")
                     end if
                 end tell
 EOS}
-            #puts ret
-        end
-    end
+=end
+                #puts ret
 end
+
+#
+# -------------------------------------------- MAIN
+#
+
+note_data = get_cur_note_data
+if note_data == nil then
+    showdialog "Sorry. Unable to read note's link or content."
+    exit 1
+end
+curlink, curcontent = note_data
+
+rawcontent = get_raw_content(curcontent)
+
+open_in_vim(curlink, rawcontent)
+
+
