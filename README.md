@@ -17,6 +17,10 @@ The prerequisites are:
 - vim
 - iTerm
 
+- and, if you wish to use dragrams, graphviz
+
+BTW, diagram syntax is: '''dragram/LF/ diagram goes here /LF/'''
+
 Some of these can be replaced by your favorite tool. For instance, you could use macvim or terminal.
 
 To automate the use of this script, I have used Automator to create a service that runs it in a shell. I then used the System Preferences to configure a hotkey (in my case <opt><cmd>E) that will invoke the service.
