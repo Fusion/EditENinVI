@@ -199,10 +199,20 @@ if rawcontentmatches != nil
 else
     rawcontent = simpleconvert(curcontent)
 end
-puts "CUR:"
-puts curcontent
-puts "RAW:"
-puts rawcontent
+
+properties = %x{osascript <<EOS
+tell application #{quote 'Evernote'}
+    if selection is not {} then
+        set curselection to selection
+        return properties of item 1 of curselection
+    else
+        return ""
+    end if
+end tell
+EOS}.strip
+
+
+puts properties
 
 require 'tempfile'
 Tempfile.open('entovi') do |file|
@@ -253,6 +263,18 @@ EOS}
                     set note1 to find note "#{curlink}"
                     if note1 is not missing value then
                         set HTML content of note1 to #{quote escape(newcontent + "\n\n" + preraw + rawvitoen(newrawcontent) + postraw)}
+                    end if
+                end tell
+EOS}
+            # Yes, we need to call the 'append' script separately from the 'set content' one.
+            # Looks like a synchronization issue.
+            # Note that we can append multiple times in a given script.
+            ret = %x{osascript <<EOS
+                tell application #{quote 'Evernote'}
+                    set note1 to find note "#{curlink}"
+                    if note1 is not missing value then
+                        set textPathDesktopFolder to (path to desktop folder from user domain) as text
+                        tell note1 to append attachment (textPathDesktopFolder & "Thatsme.jpg")
                     end if
                 end tell
 EOS}
