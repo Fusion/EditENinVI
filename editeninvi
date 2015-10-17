@@ -187,6 +187,7 @@ Process.exit unless File.executable?(MARKDOWN)
 DIAGRAM = '/usr/local/bin/dot'
 PLANTUML = '/usr/bin/java -jar ~/bin/plantuml.jar -pipe >'
 LATEX = 'PATH=/usr/local/texlive/2015/bin/x86_64-darwin:$PATH pandoc'
+ROFF = '/usr/bin/groff'
 CONVERT='/opt/ImageMagick/bin/convert'
 
 def get_cur_note_data()
@@ -322,6 +323,34 @@ def latexit(str)
     end
 end
 
+# roff -> ps -> png
+def roffit(str)
+    roff_file_path = "#{SecureRandom.uuid}.roff"
+    ps_file_path = "#{SecureRandom.uuid}.ps"
+    file_path = "#{SecureRandom.uuid}.png"
+    temp_roff_path = "#{WORK_DIR}/#{roff_file_path}"
+    temp_ps_path = "#{WORK_DIR}/#{ps_file_path}"
+    temp_path = "#{WORK_DIR}/#{file_path}"
+
+    File.open(temp_roff_path, 'w') {|f| f.write(str)}
+    IO.popen("#{ROFF} -ms -Tps -e -t -p #{temp_roff_path} > #{temp_ps_path}", 'r+') do |io|
+        io.close_write
+    end
+    if File.exist?(temp_ps_path) then
+        IO.popen("#{CONVERT} #{temp_ps_path} -trim -density 300 -quality 90 #{temp_path}", 'r+') do |io|
+            str.each_line{|line| io << line}
+            io.close_write
+        end
+        if File.exist?(temp_path) then
+            file_path
+        else
+            nil
+        end
+    else
+        nil
+    end
+end
+
 def process_bit(str)
     matches = str.match(/'''([A-Za-z0-9\-_]+)\n(.+?)\n'''/m)
     case matches[1]
@@ -331,6 +360,8 @@ def process_bit(str)
         [:plantuml, matches[2]]
     when "latex"
         [:latex, matches[2]]
+    when "roff"
+        [:roff, matches[2]]
     else
         [:text, str]
     end
@@ -383,6 +414,14 @@ def append_to_note_in_en(link, bit_action, bit_content, actions, ev_actions)
         file_path = latexit(bit_content)
         if file_path == nil then
             ev_actions << "tell note1 to append html \"<center style='color:red'>ERROR: malformed LaTeX code</center>\""
+        else
+            ev_actions << "tell note1 to append attachment file (tempFolder & \"#{file_path}\")"
+        end
+        bit_action, bit_content = actions.shift
+    when :roff
+        file_path = roffit(bit_content)
+        if file_path == nil then
+            ev_actions << "tell note1 to append html \"<center style='color:red'>ERROR: malformed roff definition</center>\""
         else
             ev_actions << "tell note1 to append attachment file (tempFolder & \"#{file_path}\")"
         end
