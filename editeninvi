@@ -183,6 +183,7 @@ EOS}
 MARKDOWN = '/usr/local/bin/multimarkdown'
 Process.exit unless File.executable?(MARKDOWN)
 DIAGRAM = '/usr/local/bin/dot'
+PLANTUML = '/usr/bin/java -jar ~/bin/plantuml.jar -pipe >'
 
 def get_cur_note_data()
 curlink = %x{osascript <<-EOS
@@ -275,11 +276,27 @@ def diagramit(str)
     end
 end
 
+def plantumlit(str)
+    file_path = "#{SecureRandom.uuid}.png"
+    temp_path = "#{File.expand_path('~')}/Desktop/#{file_path}"
+    IO.popen("#{PLANTUML} #{temp_path}", 'r+') do |io|
+        str.each_line{|line| io << line}
+        io.close_write
+    end
+    if File.exist?(temp_path) then
+        file_path
+    else
+        nil
+    end
+end
+
 def process_bit(str)
     matches = str.match(/'''([A-Za-z0-9\-_]+)\n(.+?)\n'''/m)
     case matches[1]
     when "diagram"
         [:diagram, matches[2]]
+    when "plantuml"
+        [:plantuml, matches[2]]
     else
         [:text, str]
     end
@@ -314,6 +331,14 @@ def append_to_note_in_en(link, bit_action, bit_content, actions, ev_actions)
         ev_actions << "tell note1 to append html #{(quote escape(content)).gsub("\n", '\n')}"
     when :diagram
         file_path = diagramit(bit_content)
+        if file_path == nil then
+            ev_actions << "tell note1 to append html \"<center style='color:red'>ERROR: malformed diagram definition</center>\""
+        else
+            ev_actions << "tell note1 to append attachment file (tempFolder & \"#{file_path}\")"
+        end
+        bit_action, bit_content = actions.shift
+    when :plantuml
+        file_path = plantumlit(bit_content)
         if file_path == nil then
             ev_actions << "tell note1 to append html \"<center style='color:red'>ERROR: malformed diagram definition</center>\""
         else
@@ -383,7 +408,7 @@ def open_in_vim(link, str)
                     end tell
                 end tell
             end tell
-    EOS}
+EOS}
         # timeout after 60 seconds
         endtime = Time.now + TIMEOUT
         sleep 1 until `ps aux | grep #{file.path} | grep -v grep` != "" or Time.now > endtime
