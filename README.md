@@ -57,6 +57,31 @@ You will then be able to type:
     @enduml
     ''''
 
+Note that, due to plantuml being Java-basedm there is a time penalty for starting the JVM, etc.
+
+## LaTeX
+
+You really need motivation to use this one. Not just because TeX is complex, but because getting it working on OS X is challenging. Here is my easiest-and-not-all-that-satisfying setup:
+
+1. Install imagemagick (from http://cactuslab.com/imagemagick/)
+2. Install MacTeX (from https://tug.org/mactex/mactex-download.html)
+
+I would rather use dvipng but brew and libpng are currently at odds. Note that editeninvi makes some path assumptions and you may have to fix them: 'convert' is /opt/ImageMagick/bin/convert and latex is /usr/local/texlive/2015/bin/x86_64-darwin/pdflatex.
+
+Then, try, for instance:
+
+    ''''latex
+    \documentclass[preview]{standalone}
+    \begin{document}
+    Hello. This is a test.
+    \begin{equation}
+    L = 2
+    \end{equation}
+    \end{document}
+    '''
+
+Again, due to how I trim page numbers from the PDF document, you will very likely have to make some adjustments.
+
 # HOTKEYS
 
 To automate the use of this script, I have used Automator to create a service that runs it in a shell. I then used the System Preferences to configure a hotkey (in my case <opt><cmd>E) that will invoke the service.

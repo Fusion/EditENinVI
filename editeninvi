@@ -131,12 +131,13 @@ str.gsub(/\n?<pre>\n?/, '').gsub(/<\/pre>/, '')\
     .gsub('&lt;', '<')\
     .gsub('&gt;', '>')\
     .gsub('&quot;', '"')
+    .gsub('&#92;', '\\')
 end
 
 # convert vi source format to evernote source format
 # (tells Evernote to leave the HTML code alone, really)
 def rawvitoen(str)
-"<pre>"+str+"</pre>"
+"<pre>"+str.gsub('\\', '&#92;')+"</pre>"
 end
 
 # some extra formatting to make multimarkdown's output more palatable to evernote
@@ -180,10 +181,13 @@ end
 EOS}
 =end
 
+WORK_DIR = "#{File.expand_path('~')}/Desktop"
 MARKDOWN = '/usr/local/bin/multimarkdown'
 Process.exit unless File.executable?(MARKDOWN)
 DIAGRAM = '/usr/local/bin/dot'
 PLANTUML = '/usr/bin/java -jar ~/bin/plantuml.jar -pipe >'
+LATEX = 'PATH=/usr/local/texlive/2015/bin/x86_64-darwin:$PATH pandoc'
+CONVERT='/opt/ImageMagick/bin/convert'
 
 def get_cur_note_data()
 curlink = %x{osascript <<-EOS
@@ -264,7 +268,7 @@ end
 
 def diagramit(str)
     file_path = "#{SecureRandom.uuid}.png"
-    temp_path = "#{File.expand_path('~')}/Desktop/#{file_path}"
+    temp_path = "#{WORK_DIR}/#{file_path}"
     IO.popen("#{quote DIAGRAM} -Tpng -o #{temp_path}", 'r+') do |io|
         str.each_line{|line| io << line}
         io.close_write
@@ -278,13 +282,41 @@ end
 
 def plantumlit(str)
     file_path = "#{SecureRandom.uuid}.png"
-    temp_path = "#{File.expand_path('~')}/Desktop/#{file_path}"
+    temp_path = "#{WORK_DIR}/#{file_path}"
     IO.popen("#{PLANTUML} #{temp_path}", 'r+') do |io|
         str.each_line{|line| io << line}
         io.close_write
     end
     if File.exist?(temp_path) then
         file_path
+    else
+        nil
+    end
+end
+
+# latex -> pdf -> png
+def latexit(str)
+    latex_file_path = "#{SecureRandom.uuid}.latex"
+    pdf_file_path = "#{SecureRandom.uuid}.pdf"
+    file_path = "#{SecureRandom.uuid}.png"
+    temp_latex_path = "#{WORK_DIR}/#{latex_file_path}"
+    temp_pdf_path = "#{WORK_DIR}/#{pdf_file_path}"
+    temp_path = "#{WORK_DIR}/#{file_path}"
+
+    File.open(temp_latex_path, 'w') {|f| f.write(str)}
+    IO.popen("#{LATEX} -s #{temp_latex_path} -o #{temp_pdf_path}", 'r+') do |io|
+        io.close_write
+    end
+    if File.exist?(temp_pdf_path) then
+        IO.popen("#{CONVERT} \\( #{temp_pdf_path} -trim \\) \\( -crop +0-100 \\) \\( -trim \\) -density 300 -quality 90 #{temp_path}", 'r+') do |io|
+            str.each_line{|line| io << line}
+            io.close_write
+        end
+        if File.exist?(temp_path) then
+            file_path
+        else
+            nil
+        end
     else
         nil
     end
@@ -297,6 +329,8 @@ def process_bit(str)
         [:diagram, matches[2]]
     when "plantuml"
         [:plantuml, matches[2]]
+    when "latex"
+        [:latex, matches[2]]
     else
         [:text, str]
     end
@@ -340,10 +374,20 @@ def append_to_note_in_en(link, bit_action, bit_content, actions, ev_actions)
     when :plantuml
         file_path = plantumlit(bit_content)
         if file_path == nil then
-            ev_actions << "tell note1 to append html \"<center style='color:red'>ERROR: malformed diagram definition</center>\""
+            ev_actions << "tell note1 to append html \"<center style='color:red'>ERROR: malformed UML definition</center>\""
         else
             ev_actions << "tell note1 to append attachment file (tempFolder & \"#{file_path}\")"
         end
+        bit_action, bit_content = actions.shift
+    when :latex
+        file_path = latexit(bit_content)
+        if file_path == nil then
+            ev_actions << "tell note1 to append html \"<center style='color:red'>ERROR: malformed LaTeX code</center>\""
+        else
+            ev_actions << "tell note1 to append attachment file (tempFolder & \"#{file_path}\")"
+        end
+        bit_action, bit_content = actions.shift
+    else
         bit_action, bit_content = actions.shift
     end
 
@@ -363,6 +407,7 @@ def update_note_in_en(link, raw, actions)
     end
 
     #puts "Writing first block: [#{content}]"
+    puts "Writing [#{quote escape(content + "\n\n" + PRERAW + rawvitoen(raw) + POSTRAW)}]"
 
     %x{osascript <<-EOS
         tell application #{quote 'Evernote'}
