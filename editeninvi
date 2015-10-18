@@ -17,6 +17,8 @@ RubyVM::InstructionSequence.compile_option = {
 MARKDOWN = '/usr/local/bin/multimarkdown'
 Process.exit unless File.executable?(MARKDOWN)
 DIAGRAM = '/usr/local/bin/dot'
+MAP = '/usr/local/bin/dot'
+MAP2 = '/usr/local/bin/neato'
 PLANTUML = '/usr/bin/java -jar ~/bin/plantuml.jar -pipe >'
 CODEHIGHLIGHT='/usr/local/bin/source-highlight --failsafe -f html5'
 LATEX = 'PATH=/usr/local/texlive/2015/bin/x86_64-darwin:$PATH pandoc'
@@ -286,6 +288,49 @@ def diagramit(str)
     end
 end
 
+# acceptable types:
+# lr, default (left to right, default)
+# tb, tree (top to bottom)
+# cloud
+def mapit(type, str)
+    case type
+    when "cloud", "neat", "direct"
+        mapper = MAP2
+        direction = ''
+    when "lr", "default", nil
+        mapper = MAP
+        direction = "[rankdir=LR]"
+    when "tb", "tree"
+        mapper = MAP
+        direction = "[rankdir=TB]"
+    else
+        mapper = MAP
+        direction = "[rankdir=LR]"
+    end
+    preamble=<<-EOS
+        graph G {
+            node [fontname=Verdana,fontsize=12]
+            node [style=filled]
+            node [fillcolor="#EEEEEE"]
+            node [color="#31CEF0"]
+            edge [color="#31CEF0"]
+            graph [splines=curved] #{direction}
+EOS
+    file_path = "#{SecureRandom.uuid}.png"
+    temp_path = "#{WORK_DIR}/#{file_path}"
+    IO.popen("#{quote mapper} -Tpng -o #{temp_path}", 'r+') do |io|
+        io << preamble
+        str.each_line{|line| io << line}
+        io << "}"
+        io.close_write
+    end
+    if File.exist?(temp_path) then
+        file_path
+    else
+        nil
+    end
+end
+
 def plantumlit(str)
     file_path = "#{SecureRandom.uuid}.png"
     temp_path = "#{WORK_DIR}/#{file_path}"
@@ -381,6 +426,8 @@ def process_bit(str)
     case matches[1]
     when "diagram"
         [:diagram, nil, matches[3]]
+    when "map"
+        [:map, matches[2], matches[3]]
     when "plantuml"
         [:plantuml, nil, matches[3]]
     when "code"
@@ -427,6 +474,14 @@ def append_to_note_in_en(link, bit_action, bit_arg, bit_content, actions, ev_act
         file_path = diagramit(bit_content)
         if file_path == nil then
             ev_actions << "tell note1 to append html \"<center style='color:red'>ERROR: malformed diagram definition</center>\""
+        else
+            ev_actions << "tell note1 to append attachment file (tempFolder & \"#{file_path}\")"
+        end
+        bit_action, bit_arg, bit_content = actions.shift
+    when :map
+        file_path = mapit(bit_arg, bit_content)
+        if file_path == nil then
+            ev_actions << "tell note1 to append html \"<center style='color:red'>ERROR: malformed map definition</center>\""
         else
             ev_actions << "tell note1 to append attachment file (tempFolder & \"#{file_path}\")"
         end

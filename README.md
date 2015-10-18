@@ -27,6 +27,8 @@ Currently, if you have the proper binaries installed, you can go further than ju
 
 ## graphviz
 
+### Diagrams
+
 Make sure that you have 'dot' installed in /usr/local/bin and you will be able to add entries such as:
 
     ''''diagram
@@ -39,6 +41,32 @@ Make sure that you have 'dot' installed in /usr/local/bin and you will be able t
     start [shape=Mdiamond];
     end
     ''''
+
+### Maps (mindmaps)
+
+Generate mind maps in the simplest manner possible.
+
+For instance:
+
+    '''map
+    main [shape=rectangle]
+    main -- colors
+    colors -- { red green blue }
+    blue -- { cyan marine }
+    main -- planets
+    planets -- jupiter
+    planets -- mars
+    planets -- saturn
+    jupiter -- moons -- io [xlabel="I think"]
+    '''
+
+This is already more complex than the simplest map you can generate because I specified a shape for the root node and added a label.
+
+To change the map type, you can instead specify `'''map:<type>` where 'type' is one of:
+
+- default, lr: same as not specifying anything; will render a horizontal map
+- tree, tb: will render a vertical map
+- cloud, neat, direct: will render a force directed map
 
 ## plantuml
 
@@ -187,7 +215,7 @@ Example -- some nicely formatted text:
 
 ## Source code highlighting
 
-For more advanced code handling that what is provided by multimarkdown, you can try:
+For more advanced code handling than what is provided by multimarkdown, you can try:
 
     '''code:java
     package com.voilaweb.mobile.altmount;
@@ -213,7 +241,7 @@ To use this plugin, you will need the 'source-highlight' package:
 
 ## Test plugin
 
-This one should always return the original text. This is where you can try to implement your own plugin and see if it works with this script. Thus:
+This one should always return the original text. This is where you can add your own code while implementing a plugin. Thus:
 
     '''testplugin
     your content goes here
