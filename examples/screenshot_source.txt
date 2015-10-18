@@ -1,0 +1,73 @@
+OH HELLO
+
+'''map:default
+    main [shape=rectangle]
+    main -- colors
+    colors -- { red green blue }
+    blue -- { cyan marine }
+    main -- planets
+    planets -- jupiter
+    planets -- mars
+    planets -- saturn
+    jupiter -- moons -- io [xlabel="I think"]
+'''
+'''code:java
+package com.voilaweb.mobile.altmount;
+
+import android.app.Activity;
+import android.os.Bundle;
+
+public class AltMountActivity extends Activity {
+    /** Called when the activity is first created. */
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.main);
+    }
+}
+'''
+'''plantuml
+@startuml
+Alice -> Bob: Authentication Request
+Bob --> Alice: Authentication Response
+
+Alice -> Bob: Another authentication Request
+Alice <-- Bob: another authentication Response
+@enduml
+'''
+
+
+hey
+
+'''diagram
+digraph G {
+
+subgraph cluster_0 {
+style=filled;
+color=lightgrey;
+node [style=filled,color=white];
+a0 -> a1 -> a2 -> a3;
+label = "process #1";
+}
+
+subgraph cluster_1 {
+node [style=filled];
+b0 -> b1 -> b2 -> b3;
+label = "process #2";
+color=blue
+}
+start -> a0;
+start -> b0;
+a1 -> b3;
+b2 -> a3;
+a3 -> a0;
+a3 -> end;
+b3 -> end;
+
+start [shape=Mdiamond];
+end [shape=Msquare];
+}
+'''
+
+
+yessss

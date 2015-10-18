@@ -1,6 +1,8 @@
 # EditENinVI
 
-This is a very silly little util that lets you edit Evernote notes directly from your heavy client in vim.
+This is a very silly little util that lets you edit Evernote notes directly from your heavy client in vim, using Markdown and friends: LaTeX, Roff, etc.
+
+![(Source code: examples/screenshot_source.txt)](examples/screenshot.jpg)
 
 ## Warning
 
