@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # By Chris F. Ravenscroft
-# v0.1.1
+# v0.1.2
 
 require 'tempfile'
 require 'securerandom'
@@ -11,6 +11,20 @@ RubyVM::InstructionSequence.compile_option = {
     tailcall_optimization: true,
     trace_instruction: false
 }
+
+#- Plugin list
+
+MARKDOWN = '/usr/local/bin/multimarkdown'
+Process.exit unless File.executable?(MARKDOWN)
+DIAGRAM = '/usr/local/bin/dot'
+PLANTUML = '/usr/bin/java -jar ~/bin/plantuml.jar -pipe >'
+CODEHIGHLIGHT='/usr/local/bin/source-highlight --failsafe -f html5'
+LATEX = 'PATH=/usr/local/texlive/2015/bin/x86_64-darwin:$PATH pandoc'
+ROFF = '/usr/bin/groff'
+CONVERT='/opt/ImageMagick/bin/convert'
+TESTPLUGIN=''
+
+#
 
 PRERAW = '<center style="display:none">'
 POSTRAW = '</center>'
@@ -180,17 +194,6 @@ end
     display dialog "Loading note in vim..." with icon caution buttons {"Cancel"} giving up after 10
 EOS}
 =end
-
-WORK_DIR = "#{File.expand_path('~')}/Desktop"
-MARKDOWN = '/usr/local/bin/multimarkdown'
-Process.exit unless File.executable?(MARKDOWN)
-DIAGRAM = '/usr/local/bin/dot'
-PLANTUML = '/usr/bin/java -jar ~/bin/plantuml.jar -pipe >'
-CODEHIGHLIGHT='/usr/local/bin/source-highlight --failsafe -f html5'
-LATEX = 'PATH=/usr/local/texlive/2015/bin/x86_64-darwin:$PATH pandoc'
-ROFF = '/usr/bin/groff'
-CONVERT='/opt/ImageMagick/bin/convert'
-TESTPLUGIN=''
 
 def get_cur_note_data()
 curlink = %x{osascript <<-EOS
@@ -511,7 +514,7 @@ EOS}
             tell application #{quote 'Evernote'}
                 set note1 to find note "#{link}"
                 if note1 is not missing value then
-                    set tempFolder to (path to desktop folder from user domain) as text
+                    set tempFolder to (path to temporary items from user domain) as text
                     #{ev_actions}
                 end if
             end tell
@@ -563,6 +566,12 @@ end
 #
 # -------------------------------------------- MAIN
 #
+
+WORK_DIR = %x{osascript <<EOS
+    tell application #{quote 'Evernote'}
+    return POSIX path of (path to temporary items from user domain) as text
+    end tell
+EOS}.strip
 
 note_data = get_cur_note_data
 if note_data == nil then
