@@ -185,6 +185,40 @@ Example -- some nicely formatted text:
 
 (source: http://www.zen89632.zen.co.uk/Groff/Eqn/eqnguide.pdf)
 
+## Source code highlighting
+
+For more advanced code handling that what is provided by multimarkdown, you can try:
+
+    '''code:java
+    package com.voilaweb.mobile.altmount;
+
+    import android.app.Activity;
+    import android.os.Bundle;
+
+    public class AltMountActivity extends Activity {
+        /** Called when the activity is first created. */
+        @Override
+        public void onCreate(Bundle savedInstanceState) {
+            super.onCreate(savedInstanceState);
+            setContentView(R.layout.main);
+        }
+    }
+    '''
+
+Note that you will have to provide the language as a hint to the 'code' plugin.
+
+To use this plugin, you will need the 'source-highlight' package:
+
+    brew install source-highlight
+
+## Test plugin
+
+This one should always return the original text. This is where you can try to implement your own plugin and see if it works with this script. Thus:
+
+    '''testplugin
+    your content goes here
+    '''
+
 # HOTKEYS
 
 To automate the use of this script, I have used Automator to create a service that runs it in a shell. I then used the System Preferences to configure a hotkey (in my case <opt><cmd>E) that will invoke the service.

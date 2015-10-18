@@ -186,9 +186,11 @@ MARKDOWN = '/usr/local/bin/multimarkdown'
 Process.exit unless File.executable?(MARKDOWN)
 DIAGRAM = '/usr/local/bin/dot'
 PLANTUML = '/usr/bin/java -jar ~/bin/plantuml.jar -pipe >'
+CODEHIGHLIGHT='/usr/local/bin/source-highlight --failsafe -f html5'
 LATEX = 'PATH=/usr/local/texlive/2015/bin/x86_64-darwin:$PATH pandoc'
 ROFF = '/usr/bin/groff'
 CONVERT='/opt/ImageMagick/bin/convert'
+TESTPLUGIN=''
 
 def get_cur_note_data()
 curlink = %x{osascript <<-EOS
@@ -245,7 +247,7 @@ end
 def chunk_it_up(str)
     cstr=''
     chunks = []
-    bits = str.split(/('''[A-Za-z0-9\-_]+\n.+?\n'''\n)/m)
+    bits = str.split(/('''[A-Za-z0-9\-_\:]+\n.+?\n'''\n)/m)
     bits.each do |bit|
         if bit.start_with?("'''") then
             cstr << "<!--bit-->\n"
@@ -351,19 +353,43 @@ def roffit(str)
     end
 end
 
+def codehighlightit(lang, str)
+    source_file_path = "#{SecureRandom.uuid}.txt"
+    temp_source_path = "#{WORK_DIR}/#{source_file_path}"
+    temp_path = "#{WORK_DIR}/#{source_file_path}.html"
+
+    File.open(temp_source_path, 'w') {|f| f.write(str)}
+    IO.popen("#{CODEHIGHLIGHT} -s #{lang} #{temp_source_path}", 'r+') do |io|
+        io.close_write
+    end
+    if File.exist?(temp_path) then
+        File.read(temp_path)
+    else
+        nil
+    end
+end
+
+def testpluginit(str)
+    str
+end
+
 def process_bit(str)
-    matches = str.match(/'''([A-Za-z0-9\-_]+)\n(.+?)\n'''/m)
+    matches = str.match(/'''([A-Za-z0-9\-_]+):{0,1}([A-Za-z0-9]*)\n(.+?)\n'''/m)
     case matches[1]
     when "diagram"
-        [:diagram, matches[2]]
+        [:diagram, nil, matches[3]]
     when "plantuml"
-        [:plantuml, matches[2]]
+        [:plantuml, nil, matches[3]]
+    when "code"
+        [:code, matches[2], matches[3]]
     when "latex"
-        [:latex, matches[2]]
+        [:latex, nil, matches[3]]
     when "roff"
-        [:roff, matches[2]]
+        [:roff, nil, matches[3]]
+    when "testplugin"
+        [:testplugin, nil, matches[3]]
     else
-        [:text, str]
+        [:text, nil, str]
     end
 end
 
@@ -373,7 +399,7 @@ def post_process(str, chunks)
         if line == "<!--bit-->\n" then
             actions << process_bit(chunks.shift)
         else
-            actions << [:text, line]
+            actions << [:text, nil, line]
         end
     end
     actions
@@ -384,13 +410,13 @@ def process_raw_content(str)
     post_process(markit(cstr), chunks)
 end
 
-def append_to_note_in_en(link, bit_action, bit_content, actions, ev_actions)
+def append_to_note_in_en(link, bit_action, bit_arg, bit_content, actions, ev_actions)
     case bit_action
     when :text
         content = ''
         while bit_action == :text do
             content << bit_content
-            bit_action, bit_content = actions.shift
+            bit_action, bit_arg, bit_content = actions.shift
         end
         #puts "Appending text: [#{content}]"
         ev_actions << "tell note1 to append html #{(quote escape(content)).gsub("\n", '\n')}"
@@ -401,7 +427,7 @@ def append_to_note_in_en(link, bit_action, bit_content, actions, ev_actions)
         else
             ev_actions << "tell note1 to append attachment file (tempFolder & \"#{file_path}\")"
         end
-        bit_action, bit_content = actions.shift
+        bit_action, bit_arg, bit_content = actions.shift
     when :plantuml
         file_path = plantumlit(bit_content)
         if file_path == nil then
@@ -409,7 +435,15 @@ def append_to_note_in_en(link, bit_action, bit_content, actions, ev_actions)
         else
             ev_actions << "tell note1 to append attachment file (tempFolder & \"#{file_path}\")"
         end
-        bit_action, bit_content = actions.shift
+        bit_action, bit_arg, bit_content = actions.shift
+    when :code
+        content = codehighlightit(bit_arg, bit_content)
+        if content == nil then
+            ev_actions << "tell note1 to append html \"<center style='color:red'>ERROR: highlighting code</center>\""
+        else
+            ev_actions << "tell note1 to append html #{quote escape(content)}"
+        end
+        bit_action, bit_arg, bit_content = actions.shift
     when :latex
         file_path = latexit(bit_content)
         if file_path == nil then
@@ -417,7 +451,7 @@ def append_to_note_in_en(link, bit_action, bit_content, actions, ev_actions)
         else
             ev_actions << "tell note1 to append attachment file (tempFolder & \"#{file_path}\")"
         end
-        bit_action, bit_content = actions.shift
+        bit_action, bit_arg, bit_content = actions.shift
     when :roff
         file_path = roffit(bit_content)
         if file_path == nil then
@@ -425,13 +459,21 @@ def append_to_note_in_en(link, bit_action, bit_content, actions, ev_actions)
         else
             ev_actions << "tell note1 to append attachment file (tempFolder & \"#{file_path}\")"
         end
-        bit_action, bit_content = actions.shift
+        bit_action, bit_arg, bit_content = actions.shift
+    when :testplugin
+        content = testpluginit(bit_content)
+        if content == nil then
+            ev_actions << "tell note1 to append html \"<center style='color:red'>ERROR: test plugin</center>\""
+        else
+            ev_actions << "tell note1 to append html #{quote escape(content)}"
+        end
+        bit_action, bit_arg, bit_content = actions.shift
     else
-        bit_action, bit_content = actions.shift
+        bit_action, bit_arg, bit_content = actions.shift
     end
 
     if bit_action != nil then
-        append_to_note_in_en(link, bit_action, bit_content, actions, ev_actions)
+        append_to_note_in_en(link, bit_action, bit_arg, bit_content, actions, ev_actions)
     else
         ev_actions
     end
@@ -439,10 +481,10 @@ end
 
 def update_note_in_en(link, raw, actions)
     content = ''
-    bit_action, bit_content = actions.shift
+    bit_action, bit_arg, bit_content = actions.shift
     while bit_action == :text do
         content << bit_content
-        bit_action, bit_content = actions.shift
+        bit_action, bit_arg, bit_content = actions.shift
     end
 
     #puts "Writing first block: [#{content}]"
@@ -458,7 +500,7 @@ def update_note_in_en(link, raw, actions)
 EOS}
 
     if bit_action != nil then
-        ev_actions = append_to_note_in_en(link, bit_action, bit_content, actions, []).join("\n")
+        ev_actions = append_to_note_in_en(link, bit_action, bit_arg, bit_content, actions, []).join("\n")
         #puts "EV_ACTION: [#{ev_actions}]"
 
         sleep 1 # TODO no need...
