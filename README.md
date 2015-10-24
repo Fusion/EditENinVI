@@ -23,6 +23,11 @@ The prerequisites are:
 
 Some of these dependencies can be replaced by your favorite tool. For instance, you could use macvim or terminal.
 
+If you are using a vim-family editor, I recommend using the markdown syntax highlighter. To this effect, this tool now uses temporary files suffixed with '.md' so
+ that vim can use this kind of rule, if found in .vimrc:
+
+        autocmd! BufRead,BufNewFile *.md       set filetype=markdown
+
 # PLUGINS
 
 Currently, if you have the proper binaries installed, you can go further than just using markdown.

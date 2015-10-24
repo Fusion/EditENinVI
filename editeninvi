@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # By Chris F. Ravenscroft
-# v0.1.2
+# v0.1.3
 
 require 'tempfile'
 require 'securerandom'
@@ -578,7 +578,8 @@ EOS}
 end
 
 def open_in_vim(link, str)
-    Tempfile.open('entovi') do |file|
+    Tempfile.open(['entovi', '.md']) do |file|
+        puts file.path
         file.puts str
         file.rewind
         ts = File.stat(file.path).mtime
