@@ -146,6 +146,7 @@ def rawentovi(str)
 str.gsub(/\n?<pre>\n?/, '').gsub(/<\/pre>/, '')\
     .gsub('&lt;', '<')\
     .gsub('&gt;', '>')\
+    .gsub('&amp;', '&')\
     .gsub('&quot;', '"')
     .gsub('&#92;', '\\')
 end
